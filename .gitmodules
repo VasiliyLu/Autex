@@ -1,0 +1,3 @@
+[submodule "NEbml"]
+	path = NEbml
+	url = https://github.com/VasiliyLu/NEbml.git
