@@ -1,0 +1,12 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+bin/
+obj/
+.vs/
+chunks/
+appsettings.Development.json
+resultPCM.raw
+result.webm
+result.ogg
