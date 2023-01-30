@@ -1,5 +1,7 @@
 using System.Text;
-using Autex.Backend.Services;
+using Autex.Backend.TextViewer;
+using Autex.Backend.Transcriber;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -7,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+//builder.Services.AddCors();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -24,7 +26,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey
-            (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = false,
@@ -32,7 +34,18 @@ builder.Services.AddAuthentication(options =>
     };
 });
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<YandexTranscriber>();
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<AudioMessageConsumer>();
+    x.AddConsumer<TextEventConsumer>();
+    x.UsingInMemory((context, cfg) =>
+    {
+        cfg.ConfigureEndpoints(context);
+    });
+});
+builder.Services.AddSingleton<SttServiceFactory>();
+builder.Services.AddSingleton<WSManager>();
+builder.Services.AddSingleton<SttServiceManager>();
 
 // Configure FFMpeg
 /*GlobalFFOptions.Configure(new FFOptions
@@ -48,6 +61,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    //app.UseCors(builder =>
+    //{
+    //    builder.WithOrigins("http://localhost:5173")
+    //        .AllowAnyHeader()
+    //        .AllowAnyMethod()
+    //        .AllowCredentials();
+    //});
 }
 
 app.UseWebSockets(new WebSocketOptions
@@ -63,6 +84,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/security/getMessage", (() => "Hello, world!")).RequireAuthorization();
-//app.MapHub
 
 app.Run();

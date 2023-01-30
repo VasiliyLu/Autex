@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -7,6 +7,8 @@
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>AnyCPU;x64</Platforms>
     <UserSecretsId>31a8840e-25a9-4454-8f64-f0fd07c7fd81</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>.</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,14 +16,15 @@
     <Content Remove="chunks\**" />
     <EmbeddedResource Remove="chunks\**" />
     <None Remove="chunks\**" />
+    <Compile Remove="Lib\**" />
+    <EmbeddedResource Remove="Lib\**" />
+    <None Remove="Lib\**" />
+    <Content Remove="Lib\**" />
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="yandex\cloud\ai\stt\v3\stt.proto" />
     <None Remove="yandex\cloud\ai\stt\v3\stt_service.proto" />
-    <None Remove="result.ogg" />
-    <None Remove="result.webm" />
-    <None Remove="resultPCM.raw" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,17 +42,33 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NEbml\Src\Core\Core.csproj" />
-    <ProjectReference Include="..\OggMuxer\OggMuxer.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Protobuf Include="yandex\cloud\ai\stt\v3\stt.proto" GrpcServices="Client" />
     <Protobuf Include="yandex\cloud\ai\stt\v3\stt_service.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Hubs\" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\MkvTitleEdit\app.config" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\MkvTitleEdit\packages.config" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\bin\Debug\netstandard2.0\NEbml.Core.deps.json" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\bin\Release\netstandard2.0\NEbml.Core.deps.json" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\bin\Release\netstandard2.0\publish\NEbml.Core.deps.json" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\bin\x64\Release\netstandard2.0\NEbml.Core.deps.json" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\obj\Core.csproj.nuget.dgspec.json" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\obj\NebmlCore.csproj.nuget.dgspec.json" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\obj\project.assets.json" />
+    <_ContentIncludedByDefault Remove="Lib\NEbml\Src\Core\obj\project.packagespec.json" />
+    <_ContentIncludedByDefault Remove="Lib\OggMuxer\bin\Debug\net7.0\OggMuxer.deps.json" />
+    <_ContentIncludedByDefault Remove="Lib\OggMuxer\bin\Release\net7.0\OggMuxer.deps.json" />
+    <_ContentIncludedByDefault Remove="Lib\OggMuxer\bin\x64\Release\net7.0\OggMuxer.deps.json" />
+    <_ContentIncludedByDefault Remove="Lib\OggMuxer\obj\OggMuxer.csproj.nuget.dgspec.json" />
+    <_ContentIncludedByDefault Remove="Lib\OggMuxer\obj\project.assets.json" />
+    <_ContentIncludedByDefault Remove="Lib\OggMuxer\obj\project.packagespec.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Lib\NEbml\Src\Core\Core.csproj" />
+    <ProjectReference Include="Lib\OggMuxer\OggMuxer.csproj" />
+  </ItemGroup>
   </ItemGroup>
 
 </Project>

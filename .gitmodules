@@ -1,3 +1,6 @@
-[submodule "NEbml"]
-	path = NEbml
+[submodule "Autex.Backend/Lib/NEbml"]
+	path = Autex.Backend/Lib/NEbml
 	url = https://github.com/VasiliyLu/NEbml.git
+[submodule "Autex.Backend/Lib/OpusDotNet"]
+	path = Autex.Backend/Lib/OpusDotNet
+	url = https://github.com/VasiliyLu/OpusDotNet.git

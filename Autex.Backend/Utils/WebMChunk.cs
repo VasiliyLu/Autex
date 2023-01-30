@@ -1,17 +1,12 @@
 ﻿using NEbml.Core;
 using OggMuxer;
 using OpusDotNet;
-using System;
 using System.Buffers.Binary;
-using System.IO;
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Channels;
 
 namespace Autex.Backend.Utils;
 
-public enum WrittingApplication
+public enum WritingApplication
 {
     None,
     Chrome,
@@ -22,9 +17,9 @@ public class TrackInfo : ICloneable
     public ulong Number;
     public ulong UID;
     public string? CodecName;
-    public string? CodecID;
+    public string? CodecId;
     public byte[]? CodecData;
-    public int SampleRate;
+    public uint SampleRate;
     public int ChannelCount;
 
     public object Clone()
@@ -36,7 +31,7 @@ public class TrackInfo : ICloneable
             CodecName = CodecName,
             CodecData = CodecData,
             Number = Number,
-            CodecID = CodecID,
+            CodecId = CodecId,
             SampleRate = SampleRate
         };
     }
@@ -46,6 +41,7 @@ public class TrackInfo : ICloneable
 public struct BlockHeader
 {
     public byte TrackNumber;
+    // ReSharper disable once BuiltInTypeReferenceStyle
     public Int16 RelativeTimestamp;
     public byte Flags;
 }
@@ -57,30 +53,30 @@ public record BlockInfo
     public long Position;
     public long FrameSize; //bytes
 }
-public class WebMChunk : IDisposable
+public sealed class WebMChunk : IDisposable
 {
     private const ulong ClusterId = 0x1F43B675;
-    private const ulong HeaderId = 0x1A45DFA3;
+    //private const ulong HeaderId = 0x1A45DFA3;
     private const ulong SegmentId = 0x18538067;
     private const ulong SegmentInformation = 0x1549a966;
 
-    private readonly List<TrackInfo> _trackInfos = new List<TrackInfo>();
-    private readonly List<BlockInfo> _simpleBlockInfoList = new List<BlockInfo>();
-    private Stream _webmStream;
+    private readonly List<TrackInfo> _trackInfos = new();
+    private readonly List<BlockInfo> _simpleBlockInfoList = new();
+    private readonly Stream _webmStream;
     private readonly EbmlReader _ebmlReader;
-    private bool disposedValue;
+    private bool _disposedValue;
 
-    public IReadOnlyList<TrackInfo> Tracks { get { return _trackInfos; } }
-    public WrittingApplication WrittingApplication { get; set; }
+    public IReadOnlyList<TrackInfo> Tracks => _trackInfos;
+    public WritingApplication WritingApplication { get; private set; }
 
-    private void ProcessTrackAudio(EbmlReader reader, TrackInfo trackInfo)
+    private static void ProcessTrackAudio(EbmlReader reader, TrackInfo trackInfo)
     {
         while (reader.ReadNext())
         {
             switch (reader.ElementId.EncodedValue)
             {
                 case 0xB5:
-                    trackInfo.SampleRate = (int)Math.Floor(reader.ReadFloat());
+                    trackInfo.SampleRate = (uint)Math.Floor(reader.ReadFloat());
                     break;
                 case 0x9F:
                     trackInfo.ChannelCount = (int)reader.ReadUInt();
@@ -107,7 +103,7 @@ public class WebMChunk : IDisposable
                     trackInfo.CodecData = new ArraySegment<byte>(buffer, 0, r).ToArray();
                     break;
                 case 0x86:
-                    trackInfo.CodecID = reader.ReadAscii();
+                    trackInfo.CodecId = reader.ReadAscii();
                     break;
                 case 0x258688:
                     trackInfo.CodecName = reader.ReadUtf();
@@ -179,7 +175,7 @@ public class WebMChunk : IDisposable
                     reader.EnterContainer();
                     try
                     {
-                        ProcessSegmentInfornation(reader);
+                        ProcessSegmentInformation(reader);
                     }
                     finally
                     {
@@ -190,7 +186,7 @@ public class WebMChunk : IDisposable
         }
     }
 
-    private void ProcessSegmentInfornation(EbmlReader reader)
+    private void ProcessSegmentInformation(EbmlReader reader)
     {
         while (reader.ReadNext())
         {
@@ -198,12 +194,12 @@ public class WebMChunk : IDisposable
             {
                 case 0x5741: // WritingApp id
                     var writingApp = reader.ReadUtf();
-                    WrittingApplication = writingApp switch
+                    WritingApplication = writingApp switch
                     {
-                        "Chrome" => WrittingApplication.Chrome,
+                        "Chrome" => WritingApplication.Chrome,
                         // TODO add firefox wr app string
-                        "Mozilla" => WrittingApplication.Firefox,
-                        _ => throw new InvalidDataException("Unknown writting app: " + writingApp)
+                        "Mozilla" => WritingApplication.Firefox,
+                        _ => throw new InvalidDataException("Unknown writing app: " + writingApp)
                     };
                     break;
             }
@@ -253,7 +249,7 @@ public class WebMChunk : IDisposable
         if (_webmStream.Length == 0)
             return;
 
-        if (WrittingApplication == WrittingApplication.Chrome)
+        if (WritingApplication == WritingApplication.Chrome)
         {
             var buffer = new byte[4];
             while (_webmStream.Position < _webmStream.Length)
@@ -333,7 +329,8 @@ public class WebMChunk : IDisposable
         }
         return written;
     }
-    public IEnumerable<(BlockInfo blockInfo, ArraySegment<byte> arraySegment)> ExtractOpus2()
+
+    private IEnumerable<(BlockInfo blockInfo, ArraySegment<byte> arraySegment)> ExtractOpus2()
     {
         var buf = new byte[4096];
         foreach (var blockInfo in _simpleBlockInfoList)
@@ -352,40 +349,27 @@ public class WebMChunk : IDisposable
     public void ExtractPCM(TrackInfo trackInfo, Stream outStream)
     {
 
-        using var opus = new OpusDecoder(trackInfo.SampleRate, trackInfo.ChannelCount);
+        using var opus = new OpusDecoder((int)trackInfo.SampleRate, trackInfo.ChannelCount);
 
-        BinaryWriter binaryWriter = new(outStream);
-        var pcm_buffer = new byte[100000];
-        var memoryStream = new MemoryStream();
-        foreach (var (blockInfo, arraySegment) in ExtractOpus2())
+        //BinaryWriter binaryWriter = new(outStream);
+        var pcmBuffer = new byte[100000];
+        //var memoryStream = new MemoryStream();
+        foreach (var (_, arraySegment) in ExtractOpus2())
         {
             //memoryStream.Write(opusData);
             //
             //var sampleCount = OpusPacketInfo.GetNumSamples(opusData.Array, 0, opusData.Count, (int)trackInfo.SampleRate);
-            var decoded = opus.Decode(arraySegment.Array, arraySegment.Count, pcm_buffer, 100000);
-            outStream.Write(new ArraySegment<byte>(pcm_buffer, 0, decoded));
-
-
-            //foreach (var item in new ArraySegment<float>(pcm_buffer, 0, decoded))
-            //{
-            //    binaryWriter.Write(item);
-            //}
-            //
+            var decoded = opus.Decode(arraySegment.Array, arraySegment.Count, pcmBuffer, 100000);
+            outStream.Write(new ArraySegment<byte>(pcmBuffer, 0, decoded));
         }
-        //var sampleCount = OpusPacketInfo.GetNumSamples(memoryStream.GetBuffer(), 0, (int)memoryStream.Length, (int)trackInfo.SampleRate);
-        //var decoded = opus.Decode(memoryStream.GetBuffer(), 0, (int)memoryStream.Length, pcm_buffer, 0, sampleCount, true);
-        //foreach (var item in new ArraySegment<float>(pcm_buffer, 0, decoded))
-        //{
-        //    binaryWriter.Write(item);
-        //}
     }
 
     public void ConvertToOgg(TrackInfo trackInfo, Stream outStream)
     {
         var serial = new Random().Next();
         var oggStream = new OggStream(serial);
-        
-        var infoPacket = Ogg.PackInfo((byte)trackInfo.ChannelCount,(uint)trackInfo.SampleRate);
+
+        var infoPacket = Ogg.PackInfo((byte)trackInfo.ChannelCount, trackInfo.SampleRate);
 
         var comments = new Comments();
 
@@ -396,11 +380,11 @@ public class WebMChunk : IDisposable
         // Flush to force audio data onto its own page per the spec
         Ogg.FlushPages(oggStream, outStream, true);
 
-        int packetNumber = 2;
+        var packetNumber = 2;
 
         var buf = new byte[4096];
-        int gp = 0;
-        for (int i = 0; i < _simpleBlockInfoList.Count; i++)
+        var gp = 0;
+        for (var i = 0; i < _simpleBlockInfoList.Count; i++)
         {
             var blockInfo = _simpleBlockInfoList[i];
             _webmStream.Position = blockInfo.Position;
@@ -410,12 +394,12 @@ public class WebMChunk : IDisposable
             }
             var read = _webmStream.Read(buf, 0, (int)blockInfo.FrameSize);
             //
-            gp += Ogg.GetPCMLength(Ogg.GetSampleCount(20, trackInfo.SampleRate),trackInfo.ChannelCount);
-            var oggPacket = new OggPacket(new ArraySegment<byte>(buf, 0, read).ToArray(), i==_simpleBlockInfoList.Count-1,
-               gp , packetNumber);
+            gp += Ogg.GetPCMLength(Ogg.GetSampleCount(20, (int)trackInfo.SampleRate), trackInfo.ChannelCount);
+            var oggPacket = new OggPacket(new ArraySegment<byte>(buf, 0, read).ToArray(), i == _simpleBlockInfoList.Count - 1,
+               gp, packetNumber);
             oggStream.PacketIn(oggPacket);
             Ogg.FlushPages(oggStream, outStream, false);
-            packetNumber++;            
+            packetNumber++;
         }
 
         //foreach (var (blockInfo, arraySegment) in ExtractOpus2())
@@ -429,25 +413,25 @@ public class WebMChunk : IDisposable
         Ogg.FlushPages(oggStream, outStream, true);
     }
 
-    public WebMChunk(Stream webmStream, WrittingApplication writtingApplication = WrittingApplication.None)
+    public WebMChunk(Stream webmStream, WritingApplication writingApplication = WritingApplication.None)
     {
-        WrittingApplication = writtingApplication;
+        WritingApplication = writingApplication;
         _webmStream = webmStream;
         _ebmlReader = new EbmlReader(webmStream);
         ExtractAudioInfo(_ebmlReader);
     }
 
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
-        if (!disposedValue)
+        if (!_disposedValue)
         {
             if (disposing)
             {
                 _ebmlReader.Dispose();
             }
 
-            _webmStream = null;
-            disposedValue = true;
+            //_webmStream = null;
+            _disposedValue = true;
         }
     }
 
@@ -455,6 +439,6 @@ public class WebMChunk : IDisposable
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
-        GC.SuppressFinalize(this);
+        //GC.SuppressFinalize(this);
     }
 }
