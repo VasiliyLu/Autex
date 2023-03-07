@@ -4,7 +4,7 @@ import config from "@/config/config"
 
 export function useIngestion() {
     const {
-        audioInputs: audioInputDevices,
+        audioInputs: audioInputDevices
     } = useDevicesList({
         requestPermissions: true,
         constraints: { audio: true, video: false }
@@ -26,7 +26,6 @@ export function useIngestion() {
             const mediaRecorder = new MediaRecorder(newStream, {
                 mimeType: "audio/webm; codecs=opus",
                 audioBitsPerSecond: 128000
-
             })
             const { status, data, send, open, close, ws } = useWebSocket(`${config.WS_SCHEMA}://${config.BACKEND_HOST}:${config.BACKEND_PORT}/api/Audio/ws`, {
                 autoReconnect: {

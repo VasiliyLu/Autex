@@ -6,12 +6,13 @@ using System.Runtime.InteropServices;
 
 namespace Autex.Backend.Utils;
 
-public enum WritingApplication
+public enum AudioSourceApplication
 {
     None,
     Chrome,
     Firefox
 }
+
 public class TrackInfo : ICloneable
 {
     public ulong Number;
@@ -41,6 +42,7 @@ public class TrackInfo : ICloneable
 public struct BlockHeader
 {
     public byte TrackNumber;
+
     // ReSharper disable once BuiltInTypeReferenceStyle
     public Int16 RelativeTimestamp;
     public byte Flags;
@@ -53,12 +55,15 @@ public record BlockInfo
     public long Position;
     public long FrameSize; //bytes
 }
+
 public sealed class WebMChunk : IDisposable
 {
     private const ulong ClusterId = 0x1F43B675;
+
     //private const ulong HeaderId = 0x1A45DFA3;
     private const ulong SegmentId = 0x18538067;
     private const ulong SegmentInformation = 0x1549a966;
+    private const int SimpleBlock = 0xA3;
 
     private readonly List<TrackInfo> _trackInfos = new();
     private readonly List<BlockInfo> _simpleBlockInfoList = new();
@@ -67,7 +72,7 @@ public sealed class WebMChunk : IDisposable
     private bool _disposedValue;
 
     public IReadOnlyList<TrackInfo> Tracks => _trackInfos;
-    public WritingApplication WritingApplication { get; private set; }
+    public AudioSourceApplication AudioSourceApplication { get; private set; }
 
     private static void ProcessTrackAudio(EbmlReader reader, TrackInfo trackInfo)
     {
@@ -84,6 +89,7 @@ public sealed class WebMChunk : IDisposable
             }
         }
     }
+
     private void ProcessTrack(EbmlReader reader)
     {
         var trackInfo = new TrackInfo();
@@ -118,11 +124,14 @@ public sealed class WebMChunk : IDisposable
                     {
                         reader.LeaveContainer();
                     }
+
                     break;
             }
         }
+
         _trackInfos.Add(trackInfo);
     }
+
     private void ProcessTracks(EbmlReader reader)
     {
         while (reader.ReadNext())
@@ -139,10 +148,12 @@ public sealed class WebMChunk : IDisposable
                     {
                         reader.LeaveContainer();
                     }
+
                     break;
             }
         }
     }
+
     private void ProcessSegment(EbmlReader reader)
     {
         while (reader.ReadNext())
@@ -159,6 +170,7 @@ public sealed class WebMChunk : IDisposable
                     {
                         reader.LeaveContainer();
                     }
+
                     break;
                 case ClusterId:
                     reader.EnterContainer();
@@ -170,6 +182,7 @@ public sealed class WebMChunk : IDisposable
                     {
                         reader.LeaveContainer();
                     }
+
                     break;
                 case SegmentInformation:
                     reader.EnterContainer();
@@ -181,6 +194,7 @@ public sealed class WebMChunk : IDisposable
                     {
                         reader.LeaveContainer();
                     }
+
                     break;
             }
         }
@@ -193,13 +207,13 @@ public sealed class WebMChunk : IDisposable
             switch (reader.ElementId.EncodedValue)
             {
                 case 0x5741: // WritingApp id
-                    var writingApp = reader.ReadUtf();
-                    WritingApplication = writingApp switch
+                    var audioApp = reader.ReadUtf();
+                    AudioSourceApplication = audioApp switch
                     {
-                        "Chrome" => WritingApplication.Chrome,
-                        // TODO add firefox wr app string
-                        "Mozilla" => WritingApplication.Firefox,
-                        _ => throw new InvalidDataException("Unknown writing app: " + writingApp)
+                        "Chrome" => AudioSourceApplication.Chrome,
+                        // ReSharper disable once StringLiteralTypo
+                        _ when audioApp.StartsWith("QTwritingAppLibWebM") => AudioSourceApplication.Firefox,
+                        _ => throw new InvalidDataException("Unknown writing app: " + audioApp)
                     };
                     break;
             }
@@ -223,6 +237,7 @@ public sealed class WebMChunk : IDisposable
         _simpleBlockInfoList.Add(result);
         return result;
     }
+
     private void ProcessCluster(EbmlReader reader)
     {
         while (reader.ReadNext())
@@ -231,7 +246,7 @@ public sealed class WebMChunk : IDisposable
             {
                 /*case 0xE7:
                     reader.ReadUInt();*/
-                case 0xA3:
+                case SimpleBlock:
                     var sz = reader.ElementSize;
                     var beginPosition = _webmStream.Position;
                     ReadSimpleBlock(_webmStream, sz);
@@ -240,6 +255,7 @@ public sealed class WebMChunk : IDisposable
             }
         }
     }
+
     private void ExtractAudioInfo(EbmlReader reader)
     {
         reader.IgnoreUnknownSize = true;
@@ -249,7 +265,7 @@ public sealed class WebMChunk : IDisposable
         if (_webmStream.Length == 0)
             return;
 
-        if (WritingApplication == WritingApplication.Chrome)
+        if (AudioSourceApplication == AudioSourceApplication.Chrome)
         {
             var buffer = new byte[4];
             while (_webmStream.Position < _webmStream.Length)
@@ -257,7 +273,7 @@ public sealed class WebMChunk : IDisposable
                 var newBlock = ReadSimpleBlock(_webmStream, (int)VInt.Read(_webmStream, 4, buffer).Value);
                 _webmStream.Seek(newBlock.FrameSize, SeekOrigin.Current);
                 var res = _webmStream.ReadByte();
-                if (res != -1 && res != 0xA3)
+                if (res != -1 && res != SimpleBlock)
                 {
                     throw new InvalidDataException("webm frame ended by not A3 id");
                 }
@@ -283,6 +299,7 @@ public sealed class WebMChunk : IDisposable
                         {
                             reader.LeaveContainer();
                         }
+
                         break;
                     // if n chunk 
                     case ClusterId:
@@ -296,7 +313,12 @@ public sealed class WebMChunk : IDisposable
                             reader.LeaveContainer();
                         }
                         break;
-
+                    case SimpleBlock:
+                        var sz = reader.ElementSize;
+                        var beginPosition = _webmStream.Position;
+                        ReadSimpleBlock(_webmStream, sz);
+                        _webmStream.Position = beginPosition;
+                        break;
                 }
             }
         }
@@ -305,13 +327,14 @@ public sealed class WebMChunk : IDisposable
             if (_simpleBlockInfoList.Count == 0)
                 throw;
         }
-
     }
+
     private void Clear()
     {
         this._simpleBlockInfoList.Clear();
         this._trackInfos.Clear();
     }
+
     public long ExtractOpus(Stream output)
     {
         var buf = new byte[4096];
@@ -323,10 +346,12 @@ public sealed class WebMChunk : IDisposable
             {
                 buf = new byte[blockInfo.FrameSize * 2];
             }
+
             var read = _webmStream.Read(buf, 0, (int)blockInfo.FrameSize);
             output.Write(buf, 0, read);
             written += read;
         }
+
         return written;
     }
 
@@ -340,6 +365,7 @@ public sealed class WebMChunk : IDisposable
             {
                 buf = new byte[blockInfo.FrameSize * 2];
             }
+
             var read = _webmStream.Read(buf, 0, (int)blockInfo.FrameSize);
 
             yield return (blockInfo, new ArraySegment<byte>(buf, 0, read));
@@ -348,7 +374,6 @@ public sealed class WebMChunk : IDisposable
 
     public void ExtractPCM(TrackInfo trackInfo, Stream outStream)
     {
-
         using var opus = new OpusDecoder((int)trackInfo.SampleRate, trackInfo.ChannelCount);
 
         //BinaryWriter binaryWriter = new(outStream);
@@ -392,11 +417,13 @@ public sealed class WebMChunk : IDisposable
             {
                 buf = new byte[blockInfo.FrameSize * 2];
             }
+
             var read = _webmStream.Read(buf, 0, (int)blockInfo.FrameSize);
             //
             gp += Ogg.GetPCMLength(Ogg.GetSampleCount(20, (int)trackInfo.SampleRate), trackInfo.ChannelCount);
-            var oggPacket = new OggPacket(new ArraySegment<byte>(buf, 0, read).ToArray(), i == _simpleBlockInfoList.Count - 1,
-               gp, packetNumber);
+            var oggPacket = new OggPacket(new ArraySegment<byte>(buf, 0, read).ToArray(),
+                i == _simpleBlockInfoList.Count - 1,
+                gp, packetNumber);
             oggStream.PacketIn(oggPacket);
             Ogg.FlushPages(oggStream, outStream, false);
             packetNumber++;
@@ -413,11 +440,11 @@ public sealed class WebMChunk : IDisposable
         Ogg.FlushPages(oggStream, outStream, true);
     }
 
-    public WebMChunk(Stream webmStream, WritingApplication writingApplication = WritingApplication.None)
+    public WebMChunk(Stream webmStream, AudioSourceApplication audioSourceApplication = AudioSourceApplication.None)
     {
-        WritingApplication = writingApplication;
+        AudioSourceApplication = audioSourceApplication;
         _webmStream = webmStream;
-        _ebmlReader = new EbmlReader(webmStream);
+        _ebmlReader = new EbmlReader(webmStream, webmStream.Length);
         ExtractAudioInfo(_ebmlReader);
     }
 

@@ -2,9 +2,8 @@
     <div class="input">
         <label for="audioInputDeviceSelect">Audio Input Device:</label>
         <select v-model="selectedAudioInputDeviceId" id="audioInputDeviceSelect">
-            <option v-for="device in audioInputDevices" :key="device.deviceId" :value="device.deviceId">{{
-                device.label
-            }}
+            <option v-for="device in audioInputDevices" :key="device.deviceId" :value="device.deviceId">
+                {{ device.label }}
             </option>
         </select>
     </div>
@@ -14,10 +13,9 @@
     </div>
     <div>
         <button @click="enabled = !enabled">
-            {{ enabled ? 'Stop': 'Start' }}
+            {{ enabled ? 'Stop' : 'Start' }}
         </button>
     </div>
-
 </template>
 
 <script setup>

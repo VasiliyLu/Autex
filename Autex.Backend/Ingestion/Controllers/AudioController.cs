@@ -58,18 +58,18 @@ namespace Autex.Backend.Ingestion.Controllers
             var receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
             TrackInfo? trackInfo = null;
-            var writingApplication = WritingApplication.None;
+            var audioSourceApplication = AudioSourceApplication.None;
             while (!receiveResult.CloseStatus.HasValue)
             {
                 try
                 {
                     using var webmChunkStream = new MemoryStream(buffer, 0, receiveResult.Count, false);
 
-                    using WebMChunk chunk = new(webmChunkStream, writingApplication);
+                    using WebMChunk chunk = new(webmChunkStream, audioSourceApplication);
                     if (chunk.Tracks.Count > 0)
                     {
                         trackInfo = chunk.Tracks[0];
-                        writingApplication = chunk.WritingApplication;
+                        audioSourceApplication = chunk.AudioSourceApplication;
                     }
 
                     if (trackInfo == null)

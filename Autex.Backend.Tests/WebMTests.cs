@@ -19,17 +19,17 @@ namespace Autex.Backend.Tests
             Directory.CreateDirectory(OggChunksDir);
             Directory.CreateDirectory(PcmChunksDir);
             TrackInfo? trackInfo = null;
-            WritingApplication writingApplication = WritingApplication.None;
+            var audioSourceApplication = AudioSourceApplication.None;
             int chunkNumber = 0;
             foreach (var fileName in Directory.EnumerateFiles(ChunksDir))
             {
                 using var webmChunkStream = new FileStream(fileName, FileMode.Open);
                 // 
-                WebMChunk chunk = new (webmChunkStream, writingApplication);
+                WebMChunk chunk = new (webmChunkStream, audioSourceApplication);
                 if (chunk.Tracks.Count>0)
                 {
                     trackInfo = chunk.Tracks[0];
-                    writingApplication = chunk.WritingApplication;
+                    audioSourceApplication = chunk.AudioSourceApplication;
                 }
                 if (trackInfo == null) { 
                     throw new ArgumentNullException(nameof(trackInfo));
