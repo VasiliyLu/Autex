@@ -32,7 +32,7 @@ namespace Autex.Backend.Ingestion.Controllers
                 try
                 {
                     // get channel info
-                    byte[] buf = new byte[1000];
+                    var buf = new byte[1000];
                     var res = await webSocket.ReceiveAsync(buf, CancellationToken.None);
                     var audioStreamInfo = JsonSerializer.Deserialize<AudioStreamInfo>(buf.AsSpan(0, res.Count), new JsonSerializerOptions()
                     {
@@ -42,6 +42,7 @@ namespace Autex.Backend.Ingestion.Controllers
                 }
                 catch (Exception e)
                 {
+                    //_logger.LogError(e.Message);
                     await webSocket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, e.Message, CancellationToken.None);
                     throw;
                 }
@@ -53,12 +54,11 @@ namespace Autex.Backend.Ingestion.Controllers
         }
         private async Task ReadWS(WebSocket webSocket, AudioStreamInfo audioStreamInfo)
         {
-
             var buffer = new byte[128000 / 8 * 3];
             var receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
             TrackInfo? trackInfo = null;
-            WritingApplication writingApplication = WritingApplication.None;
+            var writingApplication = WritingApplication.None;
             while (!receiveResult.CloseStatus.HasValue)
             {
                 try
@@ -78,7 +78,7 @@ namespace Autex.Backend.Ingestion.Controllers
                     using MemoryStream pcmStream = new();
                     chunk.ExtractPCM(trackInfo, pcmStream);
 
-                    await _bus.Publish<AudioMessage>(new AudioMessage(audioStreamInfo with
+                    await _bus.Publish(new AudioMessage(audioStreamInfo with
                     {
                         ChannelCount = trackInfo.ChannelCount,
                         SampleRate = trackInfo.SampleRate
@@ -87,9 +87,10 @@ namespace Autex.Backend.Ingestion.Controllers
                         AudioChunk = pcmStream.ToArray()
                     });
                 }
-                catch (Exception)
+                catch(Exception e)
                 {
-
+                    //logger.LogError(e.Message);
+                    throw;
                 }
                 receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             }

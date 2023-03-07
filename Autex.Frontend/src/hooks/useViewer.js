@@ -1,5 +1,6 @@
 import { ref, watch, computed } from 'vue';
 import { useWebSocket } from "@vueuse/core";
+import config from "@/config/config"
 
 export function useViewer() {
     const enabled = ref(false)
@@ -7,8 +8,9 @@ export function useViewer() {
     const channelId = ref("0")
 
     function getUri() {
-        return 'wss://localhost:7285/api/TextViewer/ws?channelId='
-            + parseInt(channelId.value);
+        const res = `${config.WS_SCHEMA}://${config.BACKEND_HOST}:${config.BACKEND_PORT}/api/TextViewer/ws?channelId=${parseInt(channelId.value)}`
+        console.log(res)
+        return res
     }
     const url = ref(getUri)
 

@@ -1,5 +1,6 @@
 import { useDevicesList, useUserMedia, useWebSocket } from "@vueuse/core";
 import { ref, watch } from 'vue';
+import config from "@/config/config"
 
 export function useIngestion() {
     const {
@@ -25,12 +26,12 @@ export function useIngestion() {
             const mediaRecorder = new MediaRecorder(newStream, {
                 mimeType: "audio/webm; codecs=opus",
                 audioBitsPerSecond: 128000
-                
+
             })
-            const { status, data, send, open, close, ws } = useWebSocket('wss://localhost:7285/api/Audio/ws', {
+            const { status, data, send, open, close, ws } = useWebSocket(`${config.WS_SCHEMA}://${config.BACKEND_HOST}:${config.BACKEND_PORT}/api/Audio/ws`, {
                 autoReconnect: {
                     retries: 3,
-                    delay: 2000,    
+                    delay: 2000,
                     onFailed() {
                         console.log("onfailed emit")
                         enabled.value = false;
@@ -39,7 +40,7 @@ export function useIngestion() {
                 },
                 onDisconnected() {
                     enabled.value = false;
-                }         
+                }
             })
             send(JSON.stringify({
                 channelId: parseInt(channel.value)
@@ -49,11 +50,11 @@ export function useIngestion() {
                 send(ev.data);
             })
 
-            mediaRecorder.onstop = ()=>{
+            mediaRecorder.onstop = () => {
                 close()
-            }       
+            }
 
-            mediaRecorder.start(500);     
+            mediaRecorder.start(500);
         } else {
             console.log("stop")
         }

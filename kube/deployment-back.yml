@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: autex-storage-claim
+  namespace: autex
+spec:
+  resources:
+    requests:
+      storage: "100Mi"
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: autex-back
+  namespace: autex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: autex-back
+  template:
+    metadata:
+      labels:
+        app: autex-back
+    spec:
+      containers:
+      - name: autex-back
+        image: vasiliylu/autex-back
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        env:
+          - name: ASPNETCORE_URLS
+            value: http://*:80  
+        ports:
+        - containerPort: 80
+        volumeMounts:
+          - name: autex-storage
+            mountPath: /data/db 
+      volumes:
+        - name: autex-storage
+          persistentVolumeClaim:
+            claimName: autex-storage-claim

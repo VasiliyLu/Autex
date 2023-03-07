@@ -1,0 +1,15 @@
+version: '3'
+services:
+  back:
+    build: ./Autex.Backend
+    ports:
+      - "8081:80"
+  front:
+    build: ./Autex.Frontend
+    #env_file:
+    #  - ./Autex.Frontend/.env
+    #  - ./Autex.Frontend/.env.local
+    ports:
+      - "8080:80"
+    depends_on:
+      - "back"

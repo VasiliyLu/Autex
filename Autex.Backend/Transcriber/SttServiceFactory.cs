@@ -12,8 +12,8 @@
         }
         public ISttServiceClient CreateNewSttService()
         {
-            //return new MockSttService(_loggerFactory.CreateLogger<MockSttService>());
-            return new YandexTranscriberService(_configuration, _loggerFactory.CreateLogger<YandexTranscriberService>());
+            return new MockSttService(_loggerFactory.CreateLogger<MockSttService>());
+            //return new YandexTranscriberService(_configuration, _loggerFactory.CreateLogger<YandexTranscriberService>());
         }
     }
 }

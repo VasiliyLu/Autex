@@ -5,6 +5,7 @@ namespace Autex.Backend.Transcriber
     public class MockSttService : ISttServiceClient
     {
         private readonly ILogger<MockSttService> _logger;
+        private DateTime _timestamp = DateTime.Now;
 
         public MockSttService(ILogger<MockSttService> logger)
         {
@@ -22,6 +23,14 @@ namespace Autex.Backend.Transcriber
             messageEvent.Alternatives.Add($"test1 {DateTime.Now:MMddHH mm ss FF}");
             messageEvent.EventType = TextEventType.Final;
             TextEventHandler?.Invoke(this, new(messageEvent));
+
+            if (DateTime.Now.Subtract(_timestamp).TotalSeconds > 1)
+            {
+                messageEvent.EventType = TextEventType.FinalRefinement;
+                TextEventHandler?.Invoke(this, new TextEventArgs(messageEvent));
+                
+                _timestamp = DateTime.Now;
+            }
         }
     }
 }

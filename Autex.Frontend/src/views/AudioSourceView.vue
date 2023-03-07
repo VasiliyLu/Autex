@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import AudioSource3 from "../components/AudioSource.vue";
+import AudioSource3 from "@/components/AudioSource.vue";
 
 function startStream() {
   console.log("start stream");

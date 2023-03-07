@@ -1,9 +1,8 @@
-using System.Text;
+using Autex.Backend.DAL;
 using Autex.Backend.TextViewer;
 using Autex.Backend.Transcriber;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,35 +13,24 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddDbContext<AutexContext>();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey
-            (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = false,
-        ValidateIssuerSigningKey = true
-    };
-});
+}).AddJwtBearer();
+
 builder.Services.AddAuthorization();
+
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AudioMessageConsumer>();
     x.AddConsumer<TextEventConsumer>();
-    x.UsingInMemory((context, cfg) =>
-    {
-        cfg.ConfigureEndpoints(context);
-    });
+    x.UsingInMemory((context, cfg) => { cfg.ConfigureEndpoints(context); });
 });
+
 builder.Services.AddSingleton<SttServiceFactory>();
 builder.Services.AddSingleton<WSManager>();
 builder.Services.AddSingleton<SttServiceManager>();
@@ -61,14 +49,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
-    //app.UseCors(builder =>
-    //{
-    //    builder.WithOrigins("http://localhost:5173")
-    //        .AllowAnyHeader()
-    //        .AllowAnyMethod()
-    //        .AllowCredentials();
-    //});
+    
+    /*app.UseCors(corsPolicyBuilder =>
+{
+    corsPolicyBuilder.WithOrigins("http://front")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+});*/
 }
 
 app.UseWebSockets(new WebSocketOptions
@@ -76,13 +64,13 @@ app.UseWebSockets(new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromMinutes(2)
 });
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/security/getMessage", (() => "Hello, world!")).RequireAuthorization();
+app.MapGet("/api/getMessage", (() => "Hello, world!"));
 
 app.Run();

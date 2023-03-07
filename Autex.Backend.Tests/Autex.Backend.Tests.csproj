@@ -10,6 +10,10 @@
     <UserSecretsId>7bdac106-5879-4849-9c11-a444b689cad4</UserSecretsId>
 
     <PlatformTarget>x64</PlatformTarget>
+
+    <Configurations>Debug;Release</Configurations>
+
+    <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,7 +32,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Autex.Backend\Autex.Backend.csproj" />
-    <ProjectReference Include="..\NEbml\Src\Core\Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,8 +6,8 @@ bin/
 obj/
 .vs/
 chunks/
-appsettings.Development.json
+#appsettings.*.json
 resultPCM.raw
 result.webm
 result.ogg
-/*.user
+*.user

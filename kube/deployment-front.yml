@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: autex-front
+  namespace: autex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: autex-front
+  template:
+    metadata:
+      labels:
+        app: autex-front
+    spec:
+      containers:
+      - name: autex-front
+        image: vasiliylu/autex-front
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
